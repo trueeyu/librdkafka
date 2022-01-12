@@ -45,6 +45,20 @@ librdkafka v1.9.0 is a feature release:
    fetch responses.
 
 
+### Producer fixes
+
+ * Fix silent message loss in idempotent/transactional producer.
+   If the idempotent or transactional producer had recently produced messages
+   to a topic that was later removed from cluster metadata responses
+   (due to broker state desynchronization), and then added back to cluster
+   metadata, and new transactional or idempotent messages were produced to the
+   same topic, the new messages could be reported as successfully delivered
+   while they in-fact were dropped as duplicates by the broker.
+   This is now fixed by saving idempotency/transaction state for removed
+   partitions in case they resurface.
+
+
+
 # librdkafka v1.8.2
 
 librdkafka v1.8.2 is a maintenance release.
