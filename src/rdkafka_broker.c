@@ -77,6 +77,18 @@
 
 static const int rd_kafka_max_block_ms = 1000;
 
+
+time_t lxh_get_time() {
+  time_t tt;
+  time(&tt);
+  return tt;
+}
+
+char* lxh_remove(char* ptr) {
+  if (ptr[strlen(ptr)-1] == '\n') ptr[strlen(ptr)-1] = '\0';
+  return ptr;
+}
+
 const char *rd_kafka_broker_state_names[] = {
 	"INIT",
 	"DOWN",
@@ -1355,6 +1367,7 @@ rd_kafka_broker_random0 (const char *func, int line,
  * @locks_required rk(read)
  * @locality any
  */
+/*
 static rd_kafka_broker_t *
 rd_kafka_broker_weighted (rd_kafka_t *rk,
                           int (*weight_cb) (rd_kafka_broker_t *rkb),
@@ -1381,7 +1394,6 @@ rd_kafka_broker_weighted (rd_kafka_t *rk,
                         cnt = 0;
                 }
 
-                /* If same weight (cnt > 0), use reservoir sampling */
                 if (cnt < 1 || rd_jitter(0, cnt) < 1) {
                         if (good)
                                 rd_kafka_broker_destroy(good);
@@ -1393,6 +1405,49 @@ rd_kafka_broker_weighted (rd_kafka_t *rk,
 
         return good;
 }
+*/
+
+static rd_kafka_broker_t *
+rd_kafka_broker_weighted (rd_kafka_t *rk,
+                          int (*weight_cb) (rd_kafka_broker_t *rkb),
+                          int features) {
+  rd_kafka_broker_t *rkb, *good = NULL;
+
+  TAILQ_FOREACH(rkb, &rk->rk_brokers, rkb_link) {
+    int weight;
+
+    if (!rd_kafka_broker_state_is_up(rkb->rkb_state)) {
+      weight = 0;
+    } else {
+      weight = 10;
+    }
+
+    if (weight <= 0)
+      continue;
+
+    if (good) {
+      if (pthread_self() == rkb->rkb_thread) {
+        rd_kafka_broker_destroy(good);
+        rd_kafka_broker_keep(rkb);
+        good = rkb;
+      } else {
+        // do nothing
+      }
+    } else {
+      rd_kafka_broker_keep(rkb);
+      good = rkb;
+    }
+  }
+
+  if (good) {
+    time_t t1 = lxh_get_time();
+    fprintf(stderr, "rd_kafka_broker_weighted: %s, %ld, %ld\n", lxh_remove(ctime(&t1)),
+            pthread_self(), good->rkb_thread);
+  }
+
+  return good;
+}
+
 
 /**
  * @brief Weighing function to select a usable broker connections,

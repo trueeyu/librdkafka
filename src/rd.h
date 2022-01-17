@@ -404,7 +404,6 @@ static RD_INLINE RD_UNUSED int rd_refcnt_get (rd_refcnt_t *R) {
 
 
 
-
 #define RD_IF_FREE(PTR,FUNC) do { if ((PTR)) FUNC(PTR); } while (0)
 
 
