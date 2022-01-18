@@ -5190,6 +5190,8 @@ static int rd_kafka_broker_thread_main (void *arg) {
 	rd_kafka_broker_t *rkb = arg;
         rd_kafka_t *rk = rkb->rkb_rk;
 
+        fprintf(stderr, "broker_thread_main start: %ld, %ld\n", pthread_self(), rkb->rkb_thread);
+
         rd_kafka_set_thread_name("%s", rkb->rkb_name);
         rd_kafka_set_thread_sysname("rdk:broker%"PRId32, rkb->rkb_nodeid);
 
@@ -5386,6 +5388,8 @@ static int rd_kafka_broker_thread_main (void *arg) {
 
 	rd_kafka_broker_destroy(rkb);
 
+        fprintf(stderr, "broker_thread_main end: %ld, %ld\n", pthread_self(), rkb->rkb_thread);
+
 #if WITH_SSL
         /* Remove OpenSSL per-thread error state to avoid memory leaks */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(LIBRESSL_VERSION_NUMBER)
@@ -5408,8 +5412,12 @@ static int rd_kafka_broker_thread_main (void *arg) {
  * Final destructor. Refcnt must be 0.
  */
 void rd_kafka_broker_destroy_final (rd_kafka_broker_t *rkb) {
+        if (rkb->rkb_thread == pthread_self()) {
+            fprintf(stderr, "broker exit: %ld, %ld\n", pthread_self(), rkb->rkb_thread);
+        } else {
+            fprintf(stderr, "DESTROY exit: %ld, %ld\n", pthread_self(), rkb->rkb_thread);
+        }
 
-        rd_assert(thrd_is_current(rkb->rkb_thread));
         rd_assert(TAILQ_EMPTY(&rkb->rkb_monitors));
         rd_assert(TAILQ_EMPTY(&rkb->rkb_outbufs.rkbq_bufs));
         rd_assert(TAILQ_EMPTY(&rkb->rkb_waitresps.rkbq_bufs));
