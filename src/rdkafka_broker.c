@@ -1367,28 +1367,33 @@ rd_kafka_broker_weighted (rd_kafka_t *rk,
                 int weight;
 
                 rd_kafka_broker_lock(rkb);
-                if (features && (rkb->rkb_features & features) != features)
-                        weight = 0;
-                else
-                        weight = weight_cb(rkb);
+                if (!rd_kafka_broker_state_is_up(rkb->rkb_state)) {
+                  weight = 0;
+                } else {
+                  weight = 10;
+                }
                 rd_kafka_broker_unlock(rkb);
 
-                if (weight <= 0 || weight < highest)
-                        continue;
-
-                if (weight > highest) {
-                        highest = weight;
-                        cnt = 0;
+                if (weight <= 0) {
+                  continue;
                 }
 
-                /* If same weight (cnt > 0), use reservoir sampling */
-                if (cnt < 1 || rd_jitter(0, cnt) < 1) {
-                        if (good)
-                                rd_kafka_broker_destroy(good);
-                        rd_kafka_broker_keep(rkb);
-                        good = rkb;
+                if (good) {
+                  if (pthread_self() == good->rkb_thread && pthread_self()%5 == 0) {
+                    rd_kafka_broker_destroy(good);
+                    rd_kafka_broker_keep(rkb);
+                    good = rkb;
+                  }
+                } else {
+                  rd_kafka_broker_keep(rkb);
+                  good = rkb;
                 }
-                cnt++;
+        }
+
+
+        if (good) {
+          fprintf(stderr, "GET_BROKER: %ld, %ld\n", pthread_self(),
+                  good->rkb_thread);
         }
 
         return good;

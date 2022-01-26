@@ -950,8 +950,13 @@ rd_kafka_metadata_refresh_topics (rd_kafka_t *rk, rd_kafka_broker_t *rkb,
 
         rd_list_destroy(&q_topics);
 
-        if (destroy_rkb)
-                rd_kafka_broker_destroy(rkb);
+        if (destroy_rkb) {
+          if (pthread_self() % 5 == 0) {
+            sleep(2);
+          }
+          fprintf(stderr, "REFRESH_DESTROY: %ld, %ld, %d", pthread_self(), rkb->rkb_thread, rd_refcnt_get(&rkb->rkb_refcnt));
+          rd_kafka_broker_destroy(rkb);
+        }
 
         return RD_KAFKA_RESP_ERR_NO_ERROR;
 }
